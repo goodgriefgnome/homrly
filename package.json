@@ -1,0 +1,34 @@
+{
+  "name": "homrly",
+  "version": "0.0.0",
+  "description": "In-browser port of homr: images of sheet music to MusicXML and LilyPond",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "fetch-models": "node scripts/fetch-models.mjs"
+  },
+  "dependencies": {
+    "onnxruntime-web": "^1.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "fast-png": "^7.0.0",
+    "fflate": "^0.8.2",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
