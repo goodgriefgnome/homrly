@@ -84,4 +84,31 @@ see the file) and gives OpenCV's triangles in OpenCV's order.
 | Staff relations, system repair | `staff_relations.py`, `system_repair.py`, `main.group_staffs` | `src/staff-relations.ts`, `src/system-repair.ts` | exact on `piano` and `photo` (model outputs to 1e-4); staffs cut in pieces; 300 random pages for the repair |
 | Staff images, dewarping, transformer, voices | `staff_parsing.py`, `staff_dewarping.py`, `transformer/`, `triplet_restoration.py` | `src/staff-parsing.ts`, `src/dewarping.ts`, `src/subdiv2d.ts`, `src/transformer.ts`, `src/vocabulary.ts`, `src/triplet-restoration.ts` | tokens and voices exact on `piano` and `photo`; staff images within one gray level; Subdiv2D on 200 point sets; clean-up and triplets on 300 random voices |
 | MusicXML output | `music_xml_generator.py` | `src/music-xml.ts`, `src/xml.ts` | byte-identical to homr on `piano` and `photo` (without image positions), 300 random voices and 400 random token streams from the whole vocabulary |
-| LilyPond output | none (new) | not yet | |
+| LilyPond output | none (new) | `src/lilypond.ts` | see below |
+
+## LilyPond output
+
+`src/lilypond.ts` is not a port: homr writes only MusicXML. It reads the MusicXML document
+that `src/music-xml.ts` builds, so the timing, voices, ties, beams and tuplets which homr's
+generator works out carry over. Parts become staves or piano staves, MusicXML voices become
+LilyPond voices on their staff (with `\change Staff` for beams across staves), gaps are filled
+with spacer rests, a short or long first measure gets `\partial` and later irregular measures
+`Timing.measureLength`, so that barlines stay where homr put them. Slurs, beams and tuplets are
+written only where they start and stop properly, which keeps the output compilable whatever
+the transformer reads.
+
+How it was checked, with [lilypond-wasm](https://github.com/goodgriefgnome/lilypond-wasm):
+
+- `test/fixtures/piano.expected.ly`, what homrly writes for both test images, compiles
+  without warnings, and its MIDI has exactly the 67 notes, at the same times, of `piano.ly`,
+  the score the test image was rendered from.
+- The LilyPond for the 300 random voices of `test/fixtures/units/voices.json` compiles
+  without warnings, and for 100 random token streams of `units/musicxml.json` (which are far
+  from music: clefs and time signatures in the middle of measures and so on) it compiles,
+  with warnings like failed bar checks where the input is nonsense.
+
+`tools/lilypond/check.mjs` compiles a set of `.ly` files and reports failures and warnings:
+
+```sh
+LILYPOND_WASM=../lilypond-wasm node tools/lilypond/check.mjs out/*.ly
+```
