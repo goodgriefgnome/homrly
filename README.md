@@ -7,23 +7,20 @@ It runs homr's ONNX models with onnxruntime-web and reimplements homr's image pr
 score building in TypeScript with opencv.js. On the test images it writes the same MusicXML as
 homr's command line, and it adds a LilyPond writer.
 
-## Demo
+## Website
 
 ```sh
 npm install
 npm run fetch-models   # homr's models, about 160 MB, into models/
-npm run demo           # http://localhost:5173
+npm run site:build     # the website, into dist-site/
+npm run site:serve     # http://localhost:8080
 ```
 
-Choose or drop an image and read the music. The page runs everything in a Web Worker, shows
-each staff as it is read, and offers the result as LilyPond and MusicXML. The models are kept
-in the browser's cache after the first run.
-
-`npm run demo:build` builds the page into `dist-demo/`. Serve the models next to it at
-`models/` (or set `VITE_MODELS_URL` when building), and send the headers
+Paste an image of sheet music, drop it or choose a file: the page reads it in a Web Worker and
+shows the LilyPond, ready to copy. The models are kept in the browser's cache after the first
+run. `dist-site/` can be served by any static host; with the headers
 `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`
-so that onnxruntime-web can use several threads; without them it runs on one, about twice as
-slow.
+onnxruntime-web uses several threads and a page takes about 20 seconds instead of 50.
 
 ## Library
 
@@ -43,7 +40,7 @@ result.voices   // what the transformer read, per voice
 which returns a model's bytes, e.g. from a cache. The stages are exported too, from
 `preprocess` and `segment` to `parseStaffs`, `generateXml` and `musicXmlToLilyPond`.
 
-Reading a page takes about 20 seconds on four threads.
+Reading a page takes about 20 seconds on four threads, 50 on one.
 
 ## How it was checked
 
@@ -63,4 +60,5 @@ MIDI has exactly the notes of the original. See [DEVELOPMENT.md](DEVELOPMENT.md)
 ## License
 
 AGPL-3.0, as a derivative of homr. The models are homr's, from its `onnx_checkpoints`
-release. `src/subdiv2d.ts` is ported from OpenCV and keeps OpenCV's license notice.
+release. `src/subdiv2d.ts` is ported from OpenCV and keeps OpenCV's license notice;
+`vendor/opencv/opencv.mjs` is a build of OpenCV, which is under the Apache 2 license.

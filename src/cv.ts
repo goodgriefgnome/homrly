@@ -1,4 +1,5 @@
-import cvImport from '@techstark/opencv-js'
+// A build of OpenCV with only what homrly uses, see tools/opencv/build.sh
+import opencv from '../vendor/opencv/opencv.mjs'
 
 /** The opencv.js module. Its typings are loose, so most calls go through `any`. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -6,26 +7,11 @@ export type CV = any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Mat = any
 
-let ready: Promise<{ cv: CV }> | undefined
 let loaded: CV | undefined
 
 /** Waits for opencv.js to finish initializing and returns it. */
 export async function loadCv(): Promise<CV> {
-  // The Emscripten module has its own `then`, which breaks when a promise resolves to the
-  // module itself, so it travels wrapped in an object.
-  ready ??= new Promise((resolve) => {
-    const module: CV = cvImport
-    // Depending on the bundler, the import is a promise of the module, the initialized
-    // module, or the module still initializing
-    if (module instanceof Promise) {
-      module.then((cv) => resolve({ cv }))
-    } else if (module.Mat) {
-      resolve({ cv: module })
-    } else {
-      module.onRuntimeInitialized = () => resolve({ cv: module })
-    }
-  })
-  loaded = (await ready).cv
+  loaded ??= await opencv
   return loaded
 }
 

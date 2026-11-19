@@ -46,7 +46,19 @@ autocrop.
 
 ## OpenCV
 
-homrly uses opencv.js (`@techstark/opencv-js`) for the OpenCV calls homr makes. Where homr
+homrly uses opencv.js for the OpenCV calls homr makes: `vendor/opencv/opencv.mjs`, OpenCV
+5.0.0 built with only the functions homrly calls (`tools/opencv/whitelist.json`), 2 MB instead
+of the 10.5 MB of the full opencv.js. It is built with the same settings as the full build
+homrly used before (`@techstark/opencv-js` 5.0.0: WebAssembly in one file, no SIMD, no
+threads), and every test gives the same results with it. To build it again, with an
+[emsdk](https://emscripten.org/docs/getting_started/downloads.html) checkout:
+
+```sh
+EMSDK=../emsdk tools/opencv/build.sh
+```
+
+The script patches one line of OpenCV's bindings, which use `cv::segmentation` even when
+nothing of it is exported, and `tools/opencv/to-esm.mjs` turns the result into an ES module. Where homr
 uses another library, homrly ports its algorithm instead: `src/pil-resize.ts` is Pillow's
 bicubic resampling, which OpenCV's resize does not reproduce, and `src/np.ts` reproduces
 numpy's medians and float32 rounding. The aim is identical results, not approximations.
@@ -113,16 +125,14 @@ How it was checked, with [lilypond-wasm](https://github.com/goodgriefgnome/lilyp
 LILYPOND_WASM=../lilypond-wasm node tools/lilypond/check.mjs out/*.ly
 ```
 
-## Demo
+## Website
 
-`demo/` is a Vite page which runs `recognize()` in a Web Worker. In development the Vite
-server serves `models/` and onnxruntime-web's loader and WebAssembly (the CPU build), which
-onnxruntime-web loads by URL so that it can start its threads; both need the cross-origin
-isolation headers. `tools/browser-check.cjs` runs the page in Chromium with Playwright and
-compares its LilyPond with an expected file; on the test images the page gives exactly
-`test/fixtures/piano.expected.ly`, in about 20 seconds on four threads.
-
-```sh
-npm run demo &
-node tools/browser-check.cjs http://localhost:5173/ test/fixtures/photo.png test/fixtures/piano.expected.ly
-```
+`site/` is a page which reads an image (pasted, dropped or chosen) and shows the LilyPond to
+copy. `npm run site:build` builds it into `dist-site/` with esbuild: the page is a fragment
+which the host wraps in a document, the recognition runs in a Web Worker, onnxruntime-web's CPU
+build is loaded by URL, and the models are split into parts of 14 MB (`models/manifest.json`)
+for hosts with a file size limit; the worker joins them and keeps them in the Cache API.
+`npm run site:serve` serves the build locally like such a host (`--isolated` adds the
+cross-origin isolation headers, with which onnxruntime-web uses several threads). In Chromium
+the page reads both test images and gives exactly `test/fixtures/piano.expected.ly`: a full
+page takes about 50 seconds on one thread.

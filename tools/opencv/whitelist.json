@@ -1,0 +1,36 @@
+{
+  "core": { "whitelist": { "": [], "Algorithm": [] } },
+  "imgproc": {
+    "whitelist": {
+      "": [
+        "blur",
+        "boundingRect",
+        "createCLAHE",
+        "dilate",
+        "ellipse2Poly",
+        "fillConvexPoly",
+        "fillPoly",
+        "findContours",
+        "getAffineTransform",
+        "getStructuringElement",
+        "morphologyEx",
+        "remap",
+        "resize",
+        "warpAffine"
+      ],
+      "CLAHE": ["apply", "collectGarbage", "getClipLimit", "getTilesGridSize", "setClipLimit", "setTilesGridSize"]
+    }
+  },
+  "geometry": {
+    "whitelist": {
+      "": [
+        "contourArea",
+        "convexHull",
+        "fitEllipse",
+        "intersectConvexConvex",
+        "minAreaRect",
+        "rotatedRectangleIntersection"
+      ]
+    }
+  }
+}
