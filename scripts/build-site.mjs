@@ -1,5 +1,4 @@
-// Builds the website into dist-site/: the page (a fragment, which the host wraps in a document),
-// its scripts, onnxruntime-web's CPU build, a sample, and the models split into parts small
+// Builds the website into dist-site/: the page, its scripts and service worker, onnxruntime-web's CPU build, a sample, and the models split into parts small
 // enough for hosts with a file size limit.
 //
 //   npm run fetch-models && npm run site:build
@@ -41,7 +40,8 @@ const common = {
 await build({ ...common, entryPoints: [root('site/app.ts').pathname], outfile: at('app.js').pathname })
 await build({ ...common, entryPoints: [root('site/worker.ts').pathname], outfile: at('worker.js').pathname })
 
-copyFileSync(root('site/page.html'), at('index.html'))
+copyFileSync(root('site/index.html'), at('index.html'))
+copyFileSync(root('site/coi-sw.js'), at('coi-sw.js'))
 copyFileSync(root('test/fixtures/piano.png'), at('sample.png'))
 copyFileSync(root('site/sample-preview.png'), at('sample-preview.png'))
 copyFileSync(root('test/fixtures/piano.expected.ly'), at('sample.ly'))

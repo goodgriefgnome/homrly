@@ -128,12 +128,14 @@ LILYPOND_WASM=../lilypond-wasm node tools/lilypond/check.mjs out/*.ly
 ## Website
 
 `site/` is a page which reads an image (pasted, dropped or chosen) and shows the LilyPond to
-copy. `npm run site:build` builds it into `dist-site/` with esbuild: the page is a fragment
-which the host wraps in a document, the recognition runs in a Web Worker, onnxruntime-web's CPU
+copy, deployed to GitHub Pages by `.github/workflows/pages.yml`. `npm run site:build` builds
+it into `dist-site/` with esbuild: the recognition runs in a Web Worker, onnxruntime-web's CPU
 build is loaded by URL, and the models are split into parts of 14 MB (`models/manifest.json`)
 for hosts with a file size limit, named `.wasm` so that hosts which serve only web file types
 serve them; the worker joins them and keeps them in the Cache API.
-`npm run site:serve` serves the build locally like such a host (`--isolated` adds the
-cross-origin isolation headers, with which onnxruntime-web uses several threads). In Chromium
-the page reads both test images and gives exactly `test/fixtures/piano.expected.ly`: a full
-page takes about 50 seconds on one thread.
+onnxruntime-web uses several threads only under cross-origin isolation, whose headers GitHub
+Pages can't send, so the page registers `site/coi-sw.js`, a service worker which adds them,
+and reloads once (with `credentialless` as the embedder policy, so that Google Fonts load).
+`npm run site:serve` serves the build locally without the headers, like GitHub Pages
+(`--isolated` sends them). In Chromium the page reads both test images and gives exactly
+`test/fixtures/piano.expected.ly`: a full page takes about 20 seconds isolated, 50 without.

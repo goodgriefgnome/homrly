@@ -1,0 +1,49 @@
+# Tests homrly and deploys the website (site/) to GitHub Pages.
+name: Website
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      # homr's models, about 160 MB, are kept between runs
+      - uses: actions/cache@v4
+        with:
+          path: models
+          key: models-${{ hashFiles('src/model-files.ts') }}
+      - run: npm run fetch-models
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run site:build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

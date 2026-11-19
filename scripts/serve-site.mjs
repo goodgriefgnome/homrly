@@ -1,6 +1,5 @@
-// Serves dist-site/ for local testing. The page is a fragment, as the host wraps it in a
-// document; this server does the same. --isolated sends the cross-origin isolation headers
-// which let onnxruntime-web use threads; without it the page runs as on a host without them.
+// Serves dist-site/ for local testing, like GitHub Pages: without the cross-origin isolation
+// headers, which the page's service worker adds. --isolated sends them from the server.
 //
 //   node scripts/serve-site.mjs [--isolated] [--port 8080]
 import { createServer } from 'node:http'
@@ -34,9 +33,5 @@ createServer((req, res) => {
     headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
     headers['Cross-Origin-Resource-Policy'] = 'same-origin'
   }
-  let body = readFileSync(file)
-  if (path === 'index.html') {
-    body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style></head><body>${body}</body></html>`
-  }
-  res.writeHead(200, headers).end(body)
+  res.writeHead(200, headers).end(readFileSync(file))
 }).listen(port, () => console.log(`http://localhost:${port}/${isolated ? ' (cross-origin isolated)' : ''}`))

@@ -1,5 +1,10 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>homrly</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Reads a picture of sheet music and writes it as LilyPond, in your browser.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600&display=swap">
@@ -46,7 +51,10 @@
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  img { max-width: 100%; }
   body {
+    margin: 0;
     background: var(--paper);
     color: var(--ink);
     font: 15px/1.55 var(--body);
@@ -161,7 +169,8 @@
   footer a { color: inherit; }
   @media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <header>
     <h1>homrly</h1>
@@ -217,3 +226,5 @@
 </div>
 
 <script type="module" src="app.js"></script>
+</body>
+</html>

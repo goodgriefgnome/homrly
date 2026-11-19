@@ -18,9 +18,12 @@ npm run site:serve     # http://localhost:8080
 
 Paste an image of sheet music, drop it or choose a file: the page reads it in a Web Worker and
 shows the LilyPond, ready to copy. The models are kept in the browser's cache after the first
-run. `dist-site/` can be served by any static host; with the headers
-`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`
-onnxruntime-web uses several threads and a page takes about 20 seconds instead of 50.
+run. A page takes about 20 seconds.
+
+The site is deployed to GitHub Pages by `.github/workflows/pages.yml` on every push to `main`,
+after the tests pass. `dist-site/` works on any static host: onnxruntime-web needs
+cross-origin isolation for its threads, and where the host can't send its headers, the page's
+service worker (`site/coi-sw.js`) adds them; without either a page takes about 50 seconds.
 
 ## Library
 

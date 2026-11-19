@@ -18,6 +18,32 @@ const copy = $<HTMLButtonElement>('copy')
 const base = new URL('./', import.meta.url).href
 let busy = false
 
+/**
+ * Threads need cross-origin isolation, whose headers static hosts like GitHub Pages can't send:
+ * coi-sw.js adds them. The page reloads once, so that the service worker serves it.
+ */
+async function isolate(): Promise<void> {
+  if (crossOriginIsolated || !('serviceWorker' in navigator) || !isSecureContext) return
+  try {
+    const registration = await navigator.serviceWorker.register(new URL('coi-sw.js', base), { scope: base })
+    if (navigator.serviceWorker.controller) return // serves the page, but the browser doesn't isolate it
+    let reloaded = false
+    try {
+      reloaded = sessionStorage.getItem('homrly-isolation') === 'tried'
+      sessionStorage.setItem('homrly-isolation', 'tried')
+    } catch {
+      return // without storage a reload could repeat
+    }
+    if (reloaded) return
+    const worker = registration.installing ?? registration.waiting ?? registration.active
+    if (worker?.state === 'activated') location.reload()
+    else worker?.addEventListener('statechange', () => worker.state === 'activated' && location.reload())
+  } catch {
+    // Without a service worker the page runs on one thread
+  }
+}
+void isolate()
+
 // The example output of the sample page, shown until something is read
 fetch(new URL('sample.ly', base))
   .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
