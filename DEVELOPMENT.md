@@ -29,7 +29,7 @@ models in place (homr downloads them on first run, or link the ones from `models
 python -m venv .venv
 .venv/bin/pip install -r tools/reference/requirements.txt
 HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py test/fixtures/photo.png
-HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py --segmentation test/fixtures/piano.png
+HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py --full test/fixtures/piano.png
 HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_units.py
 ```
 
@@ -50,6 +50,11 @@ uses another library, homrly ports its algorithm instead: `src/pil-resize.ts` is
 bicubic resampling, which OpenCV's resize does not reproduce, and `src/np.ts` reproduces
 numpy's medians and float32 rounding. The aim is identical results, not approximations.
 
+Some OpenCV calls stay in OpenCV even where plain TypeScript would be simpler or faster,
+because homr's results depend on OpenCV's exact behaviour: `intersectConvexConvex` is given
+polygons that are not strictly convex, and an exact convex intersection disagrees with it on
+about 0.4% of such pairs. `pointPolygonTest` on integer contours is ported (it is exact).
+
 ## Port status
 
 | Stage | homr source | Port | Checked against homr |
@@ -58,7 +63,8 @@ numpy's medians and float32 rounding. The aim is identical results, not approxim
 | Preprocessing (autocrop, resize, CLAHE) | `autocrop.py`, `resize.py`, `color_adjust.py` | `src/preprocess.ts`, `src/autocrop.ts`, `src/pil-resize.ts` | exact on `piano` and `photo` |
 | Segmentation | `segmentation/inference_segnet.py` | `src/segmentation.ts` | exact on `piano` |
 | Noise filtering, stronger staff lines | `noise_filtering.py`, `make_lines_stronger` | `src/noise-filtering.ts`, `src/predictions.ts` | exact on `piano` and a synthetic noisy mask |
-| Symbol and staff detection | `bounding_boxes.py`, `staff_detection.py`, ... | not yet | |
+| Symbols: boxes, noteheads with stems, bar lines | `bounding_boxes.py`, `bar_line_detection.py`, `note_detection.py`, `main.predict_symbols` | `src/bounding-boxes.ts`, `src/geometry.ts`, `src/symbols.ts` | exact on `piano`; polygon overlap on 3000 random pairs |
+| Staff detection | `staff_detection.py` | `breakWideFragments` only | exact on `piano` |
 | Staff dewarping and crops | `staff_dewarping.py`, `staff_parsing.py` | not yet | |
 | Transformer (encoder, decoder) | `transformer/` | not yet | |
 | Staff relations | `staff_relations.py` | not yet | |

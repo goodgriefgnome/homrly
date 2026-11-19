@@ -14,3 +14,14 @@ export type { Preprocessed } from './preprocess.js'
 export type { Point, PointMapping } from './point-mapping.js'
 export { predictionsFromClasses, finishPredictions, makeLinesStronger } from './predictions.js'
 export type { InputPredictions, Mask } from './predictions.js'
+export {
+  BoundingBox,
+  AngledBoundingBox,
+  RotatedBoundingBox,
+  BoundingEllipse,
+  createRotatedBoundingBoxes,
+  createBoundingEllipses,
+} from './bounding-boxes.js'
+export type { RotatedRect, Vec2, Contour } from './geometry.js'
+export { predictSymbols, combineNoteheadsWithStems, detectBarLines, NoteheadWithStem, StemDirection } from './symbols.js'
+export type { PredictedSymbols } from './symbols.js'

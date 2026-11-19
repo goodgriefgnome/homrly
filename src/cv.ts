@@ -7,6 +7,7 @@ export type CV = any
 export type Mat = any
 
 let ready: Promise<{ cv: CV }> | undefined
+let loaded: CV | undefined
 
 /** Waits for opencv.js to finish initializing and returns it. */
 export async function loadCv(): Promise<CV> {
@@ -24,7 +25,14 @@ export async function loadCv(): Promise<CV> {
       module.onRuntimeInitialized = () => resolve({ cv: module })
     }
   })
-  return (await ready).cv
+  loaded = (await ready).cv
+  return loaded
+}
+
+/** opencv.js once loadCv() has finished, for code that cannot wait for it. */
+export function cvSync(): CV {
+  if (!loaded) throw new Error('opencv.js is not loaded yet, await loadCv() first')
+  return loaded
 }
 
 /** Tracks Mats so that they can be freed together; opencv.js does not free them itself. */

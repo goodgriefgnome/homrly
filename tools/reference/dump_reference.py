@@ -3,14 +3,16 @@ Writes homr's reference outputs for test images, which the tests compare the por
 
   <name>.autocrop.json     where autocrop cropped the image
   <name>.preprocessed.png  the image segnet sees (autocrop, resize to 1920 wide, CLAHE)
-  <name>.segmentation.png  with --segmentation: the class of every pixel (0-5, see
-                           SegmentationClass)
-  <name>.staff.png         with --segmentation: the staff mask after noise filtering and
-                           make_lines_stronger
+
+and with --full, which also runs segnet and the following stages:
+
+  <name>.segmentation.png  the class of every pixel (0-5, see SegmentationClass)
+  <name>.staff.png         the staff mask after noise filtering and make_lines_stronger
+  <name>.symbols.json      the symbols found on the page, see test/symbols.test.ts
 
 Run it with homr's checkout and its models on the path, see DEVELOPMENT.md:
 
-  HOMR_DIR=../homr python -I tools/reference/dump_reference.py [--segmentation] IMAGE...
+  HOMR_DIR=../homr python -I tools/reference/dump_reference.py [--full] IMAGE...
 """
 
 import json
@@ -27,46 +29,117 @@ from homr.autocrop import autocrop_with_offset  # noqa: E402
 from homr.resize import resize_image  # noqa: E402
 
 
-def main(image_path: str, segmentation: bool) -> None:
-    stem = os.path.splitext(image_path)[0]
+def rect(box) -> list:  # noqa: ANN001
+    """A RotatedRect as JSON: [[cx, cy], [w, h], angle]."""
+    return [[float(box[0][0]), float(box[0][1])], [float(box[1][0]), float(box[1][1])], float(box[2])]
+
+
+def write_json(path: str, data: object) -> None:
+    with open(path, "w") as f:
+        json.dump(data, f)
+        f.write("\n")
+
+
+def preprocess(image_path: str, stem: str) -> tuple[np.ndarray, np.ndarray]:
     image = cv2.imread(image_path)
     cropped, (x, y) = autocrop_with_offset(image)
-    with open(stem + ".autocrop.json", "w") as f:
-        json.dump(
-            {"x": x, "y": y, "width": cropped.shape[1], "height": cropped.shape[0]}, f
-        )
-        f.write("\n")
+    write_json(
+        stem + ".autocrop.json",
+        {"x": x, "y": y, "width": cropped.shape[1], "height": cropped.shape[0]},
+    )
     resized = resize_image(cropped)
     preprocessed = color_adjust.apply_clahe(resized)
     cv2.imwrite(stem + ".preprocessed.png", preprocessed)
     print(f"{stem}: {preprocessed.shape[1]}x{preprocessed.shape[0]}", file=sys.stderr)
+    return resized, preprocessed
 
-    if segmentation:
-        from homr.segmentation.inference_segnet import inference  # noqa: PLC0415
 
-        # The arguments homr's main.get_predictions uses, on the CPU
-        staff, symbols, stems_rests, notehead, clefs_keys = inference(
-            preprocessed, use_gpu_inference=False, batch_size=8, step_size=320, win_size=320
-        )
-        classes = (
-            stems_rests * 1 + notehead * 2 + clefs_keys * 3 + staff * 4 + symbols * 5
-        ).astype(np.uint8)
-        cv2.imwrite(stem + ".segmentation.png", classes)
+def full(image_path: str, stem: str, resized: np.ndarray, preprocessed: np.ndarray) -> None:
+    from homr.bar_line_detection import detect_bar_lines  # noqa: PLC0415
+    from homr.debug import Debug  # noqa: PLC0415
+    from homr.bar_line_detection import prepare_bar_line_image  # noqa: PLC0415
+    from homr.bounding_boxes import (  # noqa: PLC0415
+        create_bounding_ellipses,
+        create_rotated_bounding_boxes,
+    )
+    from homr.model import InputPredictions  # noqa: PLC0415
+    from homr.noise_filtering import filter_predictions  # noqa: PLC0415
+    from homr.note_detection import combine_noteheads_with_stems  # noqa: PLC0415
+    from homr.segmentation.inference_segnet import inference  # noqa: PLC0415
+    from homr.staff_detection import break_wide_fragments, make_lines_stronger  # noqa: PLC0415
 
-        from homr.debug import Debug  # noqa: PLC0415
-        from homr.model import InputPredictions  # noqa: PLC0415
-        from homr.noise_filtering import filter_predictions  # noqa: PLC0415
-        from homr.staff_detection import make_lines_stronger  # noqa: PLC0415
+    # The arguments homr's main.get_predictions uses, on the CPU
+    staff, symbols, stems_rests, notehead, clefs_keys = inference(
+        preprocessed, use_gpu_inference=False, batch_size=8, step_size=320, win_size=320
+    )
+    classes = (stems_rests * 1 + notehead * 2 + clefs_keys * 3 + staff * 4 + symbols * 5).astype(
+        np.uint8
+    )
+    cv2.imwrite(stem + ".segmentation.png", classes)
 
-        predictions = InputPredictions(
-            resized, preprocessed, notehead, symbols, staff, clefs_keys, stems_rests
-        )
-        predictions = filter_predictions(predictions, Debug(resized, image_path, False))
-        cv2.imwrite(stem + ".staff.png", make_lines_stronger(predictions.staff, (1, 2)))
+    debug = Debug(resized, image_path, False)
+    predictions = InputPredictions(
+        resized, preprocessed, notehead, symbols, staff, clefs_keys, stems_rests
+    )
+    predictions = filter_predictions(predictions, debug)
+    predictions.staff = make_lines_stronger(predictions.staff, (1, 2))
+    cv2.imwrite(stem + ".staff.png", predictions.staff)
+
+    # As main.predict_symbols, which can't be imported without homr's OCR dependency
+    noteheads = create_bounding_ellipses(predictions.notehead, min_size=(4, 4))
+    found_staff_fragments = create_rotated_bounding_boxes(
+        predictions.staff, skip_merging=True, min_size=(5, 1), max_size=(10000, 100)
+    )
+    found_clefs_keys = create_rotated_bounding_boxes(
+        predictions.clefs_keys, min_size=(20, 40), max_size=(1000, 1000)
+    )
+    stems_rest = create_rotated_bounding_boxes(predictions.stems_rest)
+    bar_line_img = prepare_bar_line_image(predictions.stems_rest)
+    found_bar_lines = create_rotated_bounding_boxes(bar_line_img, skip_merging=True, min_size=(1, 5))
+
+    # As in main.detect_single_staffs
+    staff_fragments = break_wide_fragments(found_staff_fragments)
+    noteheads_with_stems = combine_noteheads_with_stems(noteheads, stems_rest)
+    average_note_head_height = float(
+        np.median([n.notehead.size[1] for n in noteheads_with_stems])
+    )
+    all_noteheads = [n.notehead for n in noteheads_with_stems]
+    all_stems = [n.stem for n in noteheads_with_stems if n.stem is not None]
+    bar_lines_or_rests = [
+        line
+        for line in found_bar_lines
+        if not line.is_overlapping_with_any(all_noteheads)
+        and not line.is_overlapping_with_any(all_stems)
+    ]
+    bar_line_boxes = detect_bar_lines(bar_lines_or_rests, average_note_head_height)
+    write_json(
+        stem + ".symbols.json",
+        {
+            "noteheads": [rect(b.box) for b in noteheads],
+            "staff_fragments": [rect(b.box) for b in found_staff_fragments],
+            "clefs_keys": [rect(b.box) for b in found_clefs_keys],
+            "stems_rest": [rect(b.box) for b in stems_rest],
+            "bar_lines": [rect(b.box) for b in found_bar_lines],
+            "broken_staff_fragments": [rect(b.box) for b in staff_fragments],
+            "noteheads_with_stems": [
+                [
+                    rect(n.notehead.box),
+                    rect(n.stem.box) if n.stem is not None else None,
+                    n.stem_direction.value if n.stem_direction is not None else None,
+                ]
+                for n in noteheads_with_stems
+            ],
+            "average_note_head_height": average_note_head_height,
+            "bar_line_boxes": [rect(b.box) for b in bar_line_boxes],
+        },
+    )
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    with_segmentation = "--segmentation" in args
-    for path in [a for a in args if a != "--segmentation"]:
-        main(path, with_segmentation)
+    with_full = "--full" in args
+    for path in [a for a in args if a != "--full"]:
+        stem = os.path.splitext(path)[0]
+        resized, preprocessed = preprocess(path, stem)
+        if with_full:
+            full(path, stem, resized, preprocessed)
