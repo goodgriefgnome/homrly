@@ -25,3 +25,8 @@ export {
 export type { RotatedRect, Vec2, Contour } from './geometry.js'
 export { predictSymbols, combineNoteheadsWithStems, detectBarLines, NoteheadWithStem, StemDirection } from './symbols.js'
 export type { PredictedSymbols } from './symbols.js'
+export { Staff, StaffPoint, Note, Rest, BarLine, Clef, Accidental, MultiStaff, SymbolOnStaff } from './model.js'
+export { detectStaff } from './staff-detection.js'
+export { addNotesToStaffs } from './note-detection.js'
+export { detectSingleStaffs } from './pipeline.js'
+export type { SingleStaffs } from './pipeline.js'

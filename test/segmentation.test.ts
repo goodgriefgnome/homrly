@@ -26,10 +26,10 @@ describe('mergeTiles', () => {
   })
 })
 
-describe.skipIf(!haveModels)('segment', () => {
-  it('matches homr on the piano fixture', { timeout: 120_000 }, async () => {
-    const image = readGray(fixture('piano.preprocessed.png'))
-    const expected = readGray(fixture('piano.segmentation.png'))
+describe.skipIf(!haveModels).each(['piano', 'photo'])('segment %s', (name) => {
+  it('matches homr', { timeout: 120_000 }, async () => {
+    const image = readGray(fixture(`${name}.preprocessed.png`))
+    const expected = readGray(fixture(`${name}.segmentation.png`))
     const models = localModels()
     try {
       const result = await segment(await models.session('segnet'), image)

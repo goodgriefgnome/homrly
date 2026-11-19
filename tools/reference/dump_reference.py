@@ -9,6 +9,7 @@ and with --full, which also runs segnet and the following stages:
   <name>.segmentation.png  the class of every pixel (0-5, see SegmentationClass)
   <name>.staff.png         the staff mask after noise filtering and make_lines_stronger
   <name>.symbols.json      the symbols found on the page, see test/symbols.test.ts
+  <name>.staffs.json       the staffs and the notes on them, see test/staffs.test.ts
 
 Run it with homr's checkout and its models on the path, see DEVELOPMENT.md:
 
@@ -133,6 +134,32 @@ def full(image_path: str, stem: str, resized: np.ndarray, preprocessed: np.ndarr
             "bar_line_boxes": [rect(b.box) for b in bar_line_boxes],
         },
     )
+
+    from homr.note_detection import add_notes_to_staffs  # noqa: PLC0415
+    from homr.staff_detection import detect_staff  # noqa: PLC0415
+
+    staffs = detect_staff(
+        debug, predictions.staff, staff_fragments, found_clefs_keys, bar_line_boxes,
+        predictions.symbols,
+    )
+    add_notes_to_staffs(staffs, noteheads_with_stems, predictions.symbols, predictions.notehead)
+    write_json(stem + ".staffs.json", [staff_json(s) for s in staffs])
+
+
+def staff_json(staff) -> dict:  # noqa: ANN001
+    return {
+        "grid": [[float(p.x), [float(y) for y in p.y], float(p.angle)] for p in staff.grid],
+        "average_unit_size": float(staff.average_unit_size),
+        "notes": [
+            [
+                rect(n.box.box),
+                int(n.position),
+                rect(n.stem.box) if n.stem is not None else None,
+                n.stem_direction.value if n.stem_direction is not None else None,
+            ]
+            for n in staff.get_notes()
+        ],
+    }
 
 
 if __name__ == "__main__":

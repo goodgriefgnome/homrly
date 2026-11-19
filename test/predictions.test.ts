@@ -14,14 +14,14 @@ describe('noise filtering', () => {
   })
 })
 
-describe('finishPredictions', () => {
-  it('gives the same staff mask as homr on the piano fixture', { timeout: 60_000 }, async () => {
+describe.each(['piano', 'photo'])('finishPredictions on %s', (name) => {
+  it('gives the same staff mask as homr', { timeout: 60_000 }, async () => {
     const cv = await loadCv()
-    const classes = readGray(fixture('piano.segmentation.png'))
-    const preprocessed = readGray(fixture('piano.preprocessed.png'))
-    const original = readBgr(fixture('piano.png')) // only carried along here
+    const classes = readGray(fixture(`${name}.segmentation.png`))
+    const preprocessed = readGray(fixture(`${name}.preprocessed.png`))
+    const original = readBgr(fixture(`${name}.png`)) // only carried along here
     const predictions = finishPredictions(cv, predictionsFromClasses(original, preprocessed, classes))
-    const expected = readGray(fixture('piano.staff.png'))
+    const expected = readGray(fixture(`${name}.staff.png`))
     expect(countDifferences(predictions.staff.data, expected.data)).toBe(0)
   })
 })

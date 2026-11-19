@@ -28,8 +28,7 @@ models in place (homr downloads them on first run, or link the ones from `models
 ```sh
 python -m venv .venv
 .venv/bin/pip install -r tools/reference/requirements.txt
-HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py test/fixtures/photo.png
-HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py --full test/fixtures/piano.png
+HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py --full test/fixtures/piano.png test/fixtures/photo.png
 HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_units.py
 ```
 
@@ -55,6 +54,10 @@ because homr's results depend on OpenCV's exact behaviour: `intersectConvexConve
 polygons that are not strictly convex, and an exact convex intersection disagrees with it on
 about 0.4% of such pairs. `pointPolygonTest` on integer contours is ported (it is exact).
 
+`src/np.ts` reproduces numpy's pairwise summation, so means and standard deviations match
+to the last bit. One known gap: homr's `find_peaks` orders peaks with `np.argsort`, whose
+order for equal values is not specified for longer arrays; the port uses a stable order.
+
 ## Port status
 
 | Stage | homr source | Port | Checked against homr |
@@ -64,7 +67,7 @@ about 0.4% of such pairs. `pointPolygonTest` on integer contours is ported (it i
 | Segmentation | `segmentation/inference_segnet.py` | `src/segmentation.ts` | exact on `piano` |
 | Noise filtering, stronger staff lines | `noise_filtering.py`, `make_lines_stronger` | `src/noise-filtering.ts`, `src/predictions.ts` | exact on `piano` and a synthetic noisy mask |
 | Symbols: boxes, noteheads with stems, bar lines | `bounding_boxes.py`, `bar_line_detection.py`, `note_detection.py`, `main.predict_symbols` | `src/bounding-boxes.ts`, `src/geometry.ts`, `src/symbols.ts` | exact on `piano`; polygon overlap on 3000 random pairs |
-| Staff detection | `staff_detection.py` | `breakWideFragments` only | exact on `piano` |
+| Staff detection, notes on staffs | `staff_detection.py`, `find_peaks.py`, `model.py`, `note_detection.py`, `main.detect_single_staffs` | `src/staff-detection.ts`, `src/find-peaks.ts`, `src/model.ts`, `src/note-detection.ts`, `src/pipeline.ts` | exact on `piano` and `photo` |
 | Staff dewarping and crops | `staff_dewarping.py`, `staff_parsing.py` | not yet | |
 | Transformer (encoder, decoder) | `transformer/` | not yet | |
 | Staff relations | `staff_relations.py` | not yet | |

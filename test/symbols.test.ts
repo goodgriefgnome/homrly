@@ -22,8 +22,8 @@ type Reference = {
 
 const boxes = (list: AngledBoundingBox[]) => list.map((b) => b.box)
 
-describe('symbols on the piano fixture', () => {
-  const reference: Reference = JSON.parse(readFileSync(fixture('piano.symbols.json'), 'utf8'))
+describe.each(['piano', 'photo'])('symbols on %s', (name) => {
+  const reference: Reference = JSON.parse(readFileSync(fixture(`${name}.symbols.json`), 'utf8'))
   let symbols: ReturnType<typeof predictSymbols>
 
   beforeAll(async () => {
@@ -31,9 +31,9 @@ describe('symbols on the piano fixture', () => {
     const predictions = finishPredictions(
       cv,
       predictionsFromClasses(
-        readBgr(fixture('piano.png')),
-        readGray(fixture('piano.preprocessed.png')),
-        readGray(fixture('piano.segmentation.png')),
+        readBgr(fixture(`${name}.png`)),
+        readGray(fixture(`${name}.preprocessed.png`)),
+        readGray(fixture(`${name}.segmentation.png`)),
       ),
     )
     symbols = predictSymbols(predictions)
