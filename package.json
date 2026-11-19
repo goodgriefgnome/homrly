@@ -22,6 +22,7 @@
     "fetch-models": "node scripts/fetch-models.mjs"
   },
   "dependencies": {
+    "@techstark/opencv-js": "^5.0.0-release.1",
     "onnxruntime-web": "^1.23.0"
   },
   "devDependencies": {

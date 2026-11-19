@@ -28,7 +28,8 @@ models in place (homr downloads them on first run, or link the ones from `models
 ```sh
 python -m venv .venv
 .venv/bin/pip install -r tools/reference/requirements.txt
-HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_segmentation.py test/fixtures/piano.png
+HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py test/fixtures/photo.png
+HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py --segmentation test/fixtures/piano.png
 ```
 
 homr's `main` module imports `rapidocr` for title detection, which homrly does not port.
@@ -37,14 +38,23 @@ The scripts import only the modules they need, so `rapidocr` is not required.
 ## Fixtures
 
 `test/fixtures/*.ly` are original scores written for these tests, rendered to PNG at 150 DPI
-with LilyPond 2.26.0.
+with LilyPond 2.26.0. `photo.png` is made from `piano.png` by
+`tools/reference/make_photo_fixture.py`: rotated, on a desk, in uneven light, to exercise
+autocrop.
+
+## OpenCV
+
+homrly uses opencv.js (`@techstark/opencv-js`) for the OpenCV calls homr makes. Where homr
+uses another library, homrly ports its algorithm instead: `src/pil-resize.ts` is Pillow's
+bicubic resampling, which OpenCV's resize does not reproduce, and `src/np.ts` reproduces
+numpy's medians and float32 rounding. The aim is identical results, not approximations.
 
 ## Port status
 
 | Stage | homr source | Port | Checked against homr |
 |---|---|---|---|
 | Model loading | `onnx_providers.py`, configs | `src/models.ts` | all models load |
-| Preprocessing (autocrop, resize, CLAHE) | `autocrop.py`, `resize.py`, `color_adjust.py` | not yet | |
+| Preprocessing (autocrop, resize, CLAHE) | `autocrop.py`, `resize.py`, `color_adjust.py` | `src/preprocess.ts`, `src/autocrop.ts`, `src/pil-resize.ts` | exact on `piano` and `photo` |
 | Segmentation | `segmentation/inference_segnet.py` | `src/segmentation.ts` | exact on `piano` |
 | Noise filtering, staff and symbol detection | `noise_filtering.py`, `staff_detection.py`, `bounding_boxes.py`, ... | not yet | |
 | Staff dewarping and crops | `staff_dewarping.py`, `staff_parsing.py` | not yet | |
