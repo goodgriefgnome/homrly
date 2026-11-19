@@ -11,6 +11,8 @@ import sys
 
 sys.path.insert(0, os.environ["HOMR_DIR"])
 
+import xml.etree.ElementTree as ET  # noqa: E402
+
 import cv2  # noqa: E402
 import numpy as np  # noqa: E402
 
@@ -238,6 +240,7 @@ def voices() -> None:
     and restore_unmarked_triplets.
     """
     from homr.transformer.vocabulary import EncodedSymbol, remove_duplicated_symbols  # noqa: PLC0415
+    from homr.music_xml_generator import XmlGeneratorArguments, generate_xml  # noqa: PLC0415
     from homr.triplet_restoration import restore_unmarked_triplets  # noqa: PLC0415
 
     rng = np.random.default_rng(9)
@@ -279,11 +282,14 @@ def voices() -> None:
             if rng.random() < 0.15:
                 tokens += [EncodedSymbol("newline")]
         cleaned = remove_duplicated_symbols(tokens)
+        restored = restore_unmarked_triplets(cleaned)
+        xml = generate_xml(XmlGeneratorArguments(), [restored], "")
         cases.append(
             {
                 "tokens": [str(t) for t in tokens],
                 "cleaned": [str(t) for t in cleaned],
-                "restored": [str(t) for t in restore_unmarked_triplets(cleaned)],
+                "restored": [str(t) for t in restored],
+                "musicxml": ET.tostring(xml, encoding="unicode"),
             }
         )
     with open(os.path.join(out, "voices.json"), "w") as f:
@@ -291,7 +297,73 @@ def voices() -> None:
         f.write("\n")
 
 
+def musicxml() -> None:
+    """
+    Random token streams from the whole vocabulary, and homr's MusicXML for them, or the
+    name of the error homr raises.
+    """
+    from homr.music_xml_generator import XmlGeneratorArguments, generate_xml  # noqa: PLC0415
+    from homr.transformer.vocabulary import EncodedSymbol, Vocabulary  # noqa: PLC0415
+
+    vocab = Vocabulary()
+    rng = np.random.default_rng(13)
+
+    def pick(tokens: dict[str, int], skip: tuple[str, ...] = ()) -> str:
+        options = [t for t in tokens if t not in skip]
+        return str(options[int(rng.integers(len(options)))])
+
+    rhythms = [r for r in vocab.rhythm if r not in ("PAD", "BOS", "EOS", "chord")]
+    # Grace notes with a tuplet value (e.g. note_3G) make homr fail, so most streams would
+    notes = [
+        r
+        for r in rhythms
+        if r.startswith(("note", "rest"))
+        and not ("G" in r and r.split("_")[1][:2].rstrip("G.") in ("3", "5", "6", "10", "12"))
+    ]
+    others = [r for r in rhythms if not r.startswith(("note", "rest"))]
+
+    def symbol() -> EncodedSymbol:
+        if rng.random() < 0.7:
+            rhythm = str(rng.choice(notes))
+        else:
+            rhythm = str(rng.choice(others))
+        if not rhythm.startswith(("note", "rest", "clef", "dynamic", "octaveShift")):
+            return EncodedSymbol(rhythm)
+        position = pick(vocab.position, (".",))
+        if rhythm.startswith("rest"):
+            return EncodedSymbol(rhythm, "_", "_", "_", "_", position)
+        if rhythm.startswith("note"):
+            articulation = pick(vocab.articulation, (".",)) if rng.random() < 0.3 else "_"
+            slur = pick(vocab.slur, (".",)) if rng.random() < 0.5 else "_"
+            return EncodedSymbol(
+                rhythm, pick(vocab.pitch, (".", "_")), pick(vocab.lift, (".",)), articulation,
+                slur, position,
+            )
+        return EncodedSymbol(rhythm, "_", "_", "_", "_", position)
+
+    cases = []
+    for _ in range(400):
+        tokens = [EncodedSymbol("clef_G2", "_", "_", "_", "_", "upper")]
+        for _ in range(int(rng.integers(5, 60))):
+            if tokens and rng.random() < 0.25 and tokens[-1].rhythm != "chord":
+                tokens.append(EncodedSymbol("chord"))
+            tokens.append(symbol())
+            if rng.random() < 0.1:
+                tokens.append(EncodedSymbol("barline"))
+        if tokens[-1].rhythm == "chord":
+            tokens.pop()
+        try:
+            xml = ET.tostring(generate_xml(XmlGeneratorArguments(), [tokens], ""), encoding="unicode")
+        except Exception as e:  # noqa: BLE001
+            xml = "error: " + type(e).__name__
+        cases.append({"tokens": [str(t) for t in tokens], "musicxml": xml})
+    with open(os.path.join(out, "musicxml.json"), "w") as f:
+        json.dump(cases, f)
+        f.write("\n")
+
+
 if __name__ == "__main__":
+    musicxml()
     voices()
     subdivisions()
     noise()

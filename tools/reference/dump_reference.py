@@ -13,6 +13,7 @@ and with --full, which also runs segnet and the following stages:
   <name>.systems.json      the staff relations and the systems, see test/systems.test.ts
   <name>.staff-<i>.png     the image of each staff the transformer reads
   <name>.tokens.json       what the transformer reads on each staff, and the voices
+  <name>.musicxml          homr's MusicXML of the voices, with the image positions
 
 Run it with homr's checkout and its models on the path, see DEVELOPMENT.md:
 
@@ -22,6 +23,7 @@ Run it with homr's checkout and its models on the path, see DEVELOPMENT.md:
 import json
 import os
 import sys
+import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.environ["HOMR_DIR"])
 
@@ -44,7 +46,9 @@ def write_json(path: str, data: object) -> None:
         f.write("\n")
 
 
-def preprocess(image_path: str, stem: str) -> tuple[np.ndarray, np.ndarray]:
+def preprocess(
+    image_path: str, stem: str
+) -> tuple[np.ndarray, np.ndarray, tuple[int, ...], tuple[int, int]]:
     image = cv2.imread(image_path)
     cropped, (x, y) = autocrop_with_offset(image)
     write_json(
@@ -55,10 +59,17 @@ def preprocess(image_path: str, stem: str) -> tuple[np.ndarray, np.ndarray]:
     preprocessed = color_adjust.apply_clahe(resized)
     cv2.imwrite(stem + ".preprocessed.png", preprocessed)
     print(f"{stem}: {preprocessed.shape[1]}x{preprocessed.shape[0]}", file=sys.stderr)
-    return resized, preprocessed
+    return resized, preprocessed, cropped.shape, (x, y)
 
 
-def full(image_path: str, stem: str, resized: np.ndarray, preprocessed: np.ndarray) -> None:
+def full(
+    image_path: str,
+    stem: str,
+    resized: np.ndarray,
+    preprocessed: np.ndarray,
+    cropped_shape: tuple[int, ...],
+    crop_top_left: tuple[int, int],
+) -> None:
     from homr.bar_line_detection import detect_bar_lines  # noqa: PLC0415
     from homr.debug import Debug  # noqa: PLC0415
     from homr.bar_line_detection import prepare_bar_line_image  # noqa: PLC0415
@@ -186,7 +197,14 @@ def full(image_path: str, stem: str, resized: np.ndarray, preprocessed: np.ndarr
         staff_image, _, _ = prepare_staff_image(debug, i, staff, image, regions)
         cv2.imwrite(f"{stem}.staff-{i}.png", staff_image)
         staff_tokens.append([str(symbol) for symbol in staff2score.predict(staff_image)])
-    voices = parse_staffs(debug, repaired, image, config)
+    from homr.music_xml_generator import XmlGeneratorArguments, generate_xml  # noqa: PLC0415
+    from homr.point_mapping import chain, undo_crop, undo_resize  # noqa: PLC0415
+
+    # The mapping of main.load_and_preprocess_predictions, for the image positions
+    to_input_image = chain(undo_resize(cropped_shape, image.shape), undo_crop(*crop_top_left))
+    voices = parse_staffs(debug, repaired, image, config, page_to_input_image=to_input_image)
+    xml = generate_xml(XmlGeneratorArguments(), voices, "")
+    ET.ElementTree(xml).write(stem + ".musicxml", encoding="unicode", xml_declaration=True)
     write_json(
         stem + ".tokens.json",
         {"staffs": staff_tokens, "voices": [[str(s) for s in voice] for voice in voices]},
@@ -228,6 +246,6 @@ if __name__ == "__main__":
     with_full = "--full" in args
     for path in [a for a in args if a != "--full"]:
         stem = os.path.splitext(path)[0]
-        resized, preprocessed = preprocess(path, stem)
+        resized, preprocessed, cropped_shape, crop_top_left = preprocess(path, stem)
         if with_full:
-            full(path, stem, resized, preprocessed)
+            full(path, stem, resized, preprocessed, cropped_shape, crop_top_left)

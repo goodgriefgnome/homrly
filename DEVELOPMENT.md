@@ -19,7 +19,8 @@ Tests that need the models are skipped when `models/` is missing.
 ## Reference outputs
 
 `tools/reference/` holds Python scripts that run homr's own code on the files in
-`test/fixtures/` and write what a stage produces next to them. The tests compare the port
+`test/fixtures/` and write what a stage produces next to them. `<name>.musicxml` is what
+homr's command line writes for the image, byte for byte. The tests compare the port
 with those files. To regenerate them you need a homr checkout at the pinned commit, its
 models in place (homr downloads them on first run, or link the ones from `models/` into
 `homr/segmentation/`, `homr/transformer/` and `homr/staff_relations/`) and the packages in
@@ -82,5 +83,5 @@ see the file) and gives OpenCV's triangles in OpenCV's order.
 | Staff detection, notes on staffs | `staff_detection.py`, `find_peaks.py`, `model.py`, `note_detection.py`, `main.detect_single_staffs` | `src/staff-detection.ts`, `src/find-peaks.ts`, `src/model.ts`, `src/note-detection.ts`, `src/pipeline.ts` | exact on `piano` and `photo` |
 | Staff relations, system repair | `staff_relations.py`, `system_repair.py`, `main.group_staffs` | `src/staff-relations.ts`, `src/system-repair.ts` | exact on `piano` and `photo` (model outputs to 1e-4); staffs cut in pieces; 300 random pages for the repair |
 | Staff images, dewarping, transformer, voices | `staff_parsing.py`, `staff_dewarping.py`, `transformer/`, `triplet_restoration.py` | `src/staff-parsing.ts`, `src/dewarping.ts`, `src/subdiv2d.ts`, `src/transformer.ts`, `src/vocabulary.ts`, `src/triplet-restoration.ts` | tokens and voices exact on `piano` and `photo`; staff images within one gray level; Subdiv2D on 200 point sets; clean-up and triplets on 300 random voices |
-| MusicXML output | `music_xml_generator.py` | not yet | |
+| MusicXML output | `music_xml_generator.py` | `src/music-xml.ts`, `src/xml.ts` | byte-identical to homr on `piano` and `photo` (without image positions), 300 random voices and 400 random token streams from the whole vocabulary |
 | LilyPond output | none (new) | not yet | |
