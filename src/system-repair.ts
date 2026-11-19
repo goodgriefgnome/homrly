@@ -6,7 +6,7 @@ import { median, pyRound } from './np.js'
  * sort like Python's tuples of bools. */
 type Layout = string
 
-const layoutOf = (row: MultiStaff): Layout => row.staffs.map((s) => (s.isGrandstaff ? '1' : '0')).join('')
+export const layoutOf = (row: MultiStaff): Layout => row.staffs.map((s) => (s.isGrandstaff ? '1' : '0')).join('')
 const repeat = (layout: Layout, n: number) => layout.repeat(n)
 
 /** Python's id(): a number per object. */

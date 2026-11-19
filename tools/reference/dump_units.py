@@ -191,7 +191,109 @@ def staff_pieces() -> None:
         f.write("\n")
 
 
+def subdivisions() -> None:
+    """Point sets like the dewarping's, and the triangles of OpenCV's Subdiv2D for them."""
+    rng = np.random.default_rng(2)
+    cases = []
+    for k in range(200):
+        kind = k % 4
+        if kind == 0:  # random points
+            pts = rng.uniform(0, 500, (int(rng.integers(3, 40)), 2)).round(1)
+        elif kind == 1:  # a grid of lines like the dewarping's, many cocircular points
+            xs = np.arange(0, 1200, 80)
+            ys = np.arange(2, 200, 40)
+            pts = np.array(
+                [[x, y + int(rng.integers(-3, 4))] for y in ys for x in xs], dtype=float
+            )
+        elif kind == 2:  # an exact grid, every point twice  # noqa: PLR2004
+            pts = np.array(
+                [[x, y] for y in range(0, 100, 20) for x in range(0, 100, 25)] * 2, dtype=float
+            )
+        else:  # a row of points between corners
+            pts = np.array(
+                [[x, 50] for x in range(0, 300, 30)] + [[0, 0], [300, 0], [0, 100], [300, 100]],
+                dtype=float,
+            )
+        p32 = pts.astype(np.float32)
+        rect = cv2.boundingRect(p32.reshape(-1, 1, 2))
+        rect = (rect[0] - 10, rect[1] - 10, rect[2] + 20, rect[3] + 20)
+        subdiv = cv2.Subdiv2D(rect)
+        for p in p32:
+            subdiv.insert((float(p[0]), float(p[1])))
+        cases.append(
+            {
+                "rect": list(rect),
+                "points": p32.tolist(),
+                "triangles": subdiv.getTriangleList().tolist(),
+            }
+        )
+    with open(os.path.join(out, "subdiv.json"), "w") as f:
+        json.dump(cases, f)
+        f.write("\n")
+
+
+def voices() -> None:
+    """
+    Random token streams of a voice, and homr's clean-up of them: remove_duplicated_symbols
+    and restore_unmarked_triplets.
+    """
+    from homr.transformer.vocabulary import EncodedSymbol, remove_duplicated_symbols  # noqa: PLC0415
+    from homr.triplet_restoration import restore_unmarked_triplets  # noqa: PLC0415
+
+    rng = np.random.default_rng(9)
+    pitches = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5"]
+
+    def note(rhythm: str, position: str) -> EncodedSymbol:
+        pitch = str(rng.choice(pitches)) if rhythm.startswith("note") else "_"
+        return EncodedSymbol(rhythm, pitch, "_", "_", "_", position)
+
+    cases = []
+    for _ in range(300):
+        tokens = []
+        if rng.random() < 0.8:
+            tokens += [EncodedSymbol("clef_G2", "_", "_", "_", "_", "upper")]
+        if rng.random() < 0.5:
+            tokens += [EncodedSymbol("chord"), EncodedSymbol("clef_F4", "_", "_", "_", "_", "lower")]
+        tokens += [EncodedSymbol("keySignature_1"), EncodedSymbol("timeSignature/4")]
+        for _measure in range(int(rng.integers(1, 7))):
+            kind = rng.random()
+            if kind < 0.35:
+                # Triplet eighths read as plain eighths against quarters in the lower voice
+                for _beat in range(3):
+                    tokens += [note("note_8", "upper"), EncodedSymbol("chord"), note("note_4", "lower")]
+                    tokens += [note("note_8", "upper"), note("note_8", "upper")]
+            elif kind < 0.6:
+                for _beat in range(3):
+                    tokens += [note(str(rng.choice(["note_4", "rest_4", "note_12"])), "upper")]
+                    if rng.random() < 0.5:
+                        tokens += [EncodedSymbol("chord"), note("note_4", "upper")]
+            elif kind < 0.8:
+                # A chord with a repeated pitch, and repeated clefs and keys
+                tokens += [EncodedSymbol("clef_G2", "_", "_", "_", "_", "upper")]
+                tokens += [EncodedSymbol("keySignature_1")]
+                tokens += [note("note_2.", "upper"), EncodedSymbol("chord"), note("note_2.", "lower")]
+            else:
+                tokens += [note(str(rng.choice(["note_8", "note_16", "note_4", "note_24"])), "upper")
+                           for _ in range(int(rng.integers(2, 8)))]
+            tokens += [EncodedSymbol(str(rng.choice(["barline", "barline", "repeatEnd"])))]
+            if rng.random() < 0.15:
+                tokens += [EncodedSymbol("newline")]
+        cleaned = remove_duplicated_symbols(tokens)
+        cases.append(
+            {
+                "tokens": [str(t) for t in tokens],
+                "cleaned": [str(t) for t in cleaned],
+                "restored": [str(t) for t in restore_unmarked_triplets(cleaned)],
+            }
+        )
+    with open(os.path.join(out, "voices.json"), "w") as f:
+        json.dump(cases, f)
+        f.write("\n")
+
+
 if __name__ == "__main__":
+    voices()
+    subdivisions()
     noise()
     overlaps()
     systems()

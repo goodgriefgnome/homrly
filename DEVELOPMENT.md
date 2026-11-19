@@ -30,6 +30,7 @@ python -m venv .venv
 .venv/bin/pip install -r tools/reference/requirements.txt
 HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py --full test/fixtures/piano.png test/fixtures/photo.png
 HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_units.py
+HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_vocabulary.py
 ```
 
 homr's `main` module imports `rapidocr` for title detection, which homrly does not port.
@@ -60,6 +61,15 @@ order for equal values is not specified for longer arrays; the port uses a stabl
 Extrapolating a staff beyond its end fits a line in closed form where homr uses
 `np.polyfit`, which can differ in the last bits.
 
+The staff images the transformer reads can differ from homr's by one gray level in a few
+pixels: native OpenCV's `warpAffine` interpolates with float32 SIMD code (fused
+multiply-adds, a lane width and a scalar tail that depend on the CPU), opencv.js does not.
+homr itself gives slightly different staff images on different machines for this reason.
+The tests allow this for the staff images; what the transformer reads must match exactly.
+
+`Subdiv2D`, which opencv.js lacks, is ported in `src/subdiv2d.ts` (under OpenCV's license,
+see the file) and gives OpenCV's triangles in OpenCV's order.
+
 ## Port status
 
 | Stage | homr source | Port | Checked against homr |
@@ -71,7 +81,6 @@ Extrapolating a staff beyond its end fits a line in closed form where homr uses
 | Symbols: boxes, noteheads with stems, bar lines | `bounding_boxes.py`, `bar_line_detection.py`, `note_detection.py`, `main.predict_symbols` | `src/bounding-boxes.ts`, `src/geometry.ts`, `src/symbols.ts` | exact on `piano` and `photo`; polygon overlap on 3000 random pairs |
 | Staff detection, notes on staffs | `staff_detection.py`, `find_peaks.py`, `model.py`, `note_detection.py`, `main.detect_single_staffs` | `src/staff-detection.ts`, `src/find-peaks.ts`, `src/model.ts`, `src/note-detection.ts`, `src/pipeline.ts` | exact on `piano` and `photo` |
 | Staff relations, system repair | `staff_relations.py`, `system_repair.py`, `main.group_staffs` | `src/staff-relations.ts`, `src/system-repair.ts` | exact on `piano` and `photo` (model outputs to 1e-4); staffs cut in pieces; 300 random pages for the repair |
-| Staff dewarping and crops | `staff_dewarping.py`, `staff_parsing.py` | not yet | |
-| Transformer (encoder, decoder) | `transformer/` | not yet | |
+| Staff images, dewarping, transformer, voices | `staff_parsing.py`, `staff_dewarping.py`, `transformer/`, `triplet_restoration.py` | `src/staff-parsing.ts`, `src/dewarping.ts`, `src/subdiv2d.ts`, `src/transformer.ts`, `src/vocabulary.ts`, `src/triplet-restoration.ts` | tokens and voices exact on `piano` and `photo`; staff images within one gray level; Subdiv2D on 200 point sets; clean-up and triplets on 300 random voices |
 | MusicXML output | `music_xml_generator.py` | not yet | |
 | LilyPond output | none (new) | not yet | |

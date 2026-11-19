@@ -11,6 +11,8 @@ and with --full, which also runs segnet and the following stages:
   <name>.symbols.json      the symbols found on the page, see test/symbols.test.ts
   <name>.staffs.json       the staffs and the notes on them, see test/staffs.test.ts
   <name>.systems.json      the staff relations and the systems, see test/systems.test.ts
+  <name>.staff-<i>.png     the image of each staff the transformer reads
+  <name>.tokens.json       what the transformer reads on each staff, and the voices
 
 Run it with homr's checkout and its models on the path, see DEVELOPMENT.md:
 
@@ -166,6 +168,28 @@ def full(image_path: str, stem: str, resized: np.ndarray, preprocessed: np.ndarr
             "systems": [system_json(m) for m in systems],
             "repaired": [system_json(m) for m in repaired],
         },
+    )
+
+    # As main.process_image: the staff images and what the transformer reads on them
+    from homr.staff_parsing import parse_staffs, prepare_staff_image  # noqa: PLC0415
+    from homr.staff_regions import StaffRegions  # noqa: PLC0415
+    from homr.transformer.configs import Config  # noqa: PLC0415
+    from homr.transformer.staff2score import Staff2Score  # noqa: PLC0415
+
+    config = Config()
+    config.use_gpu_inference = False
+    image = predictions.preprocessed
+    regions = StaffRegions(repaired)
+    staff2score = Staff2Score(config)
+    staff_tokens = []
+    for i, staff in enumerate(s for row in repaired for s in row.staffs):
+        staff_image, _, _ = prepare_staff_image(debug, i, staff, image, regions)
+        cv2.imwrite(f"{stem}.staff-{i}.png", staff_image)
+        staff_tokens.append([str(symbol) for symbol in staff2score.predict(staff_image)])
+    voices = parse_staffs(debug, repaired, image, config)
+    write_json(
+        stem + ".tokens.json",
+        {"staffs": staff_tokens, "voices": [[str(s) for s in voice] for voice in voices]},
     )
 
 
