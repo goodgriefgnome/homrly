@@ -18,7 +18,6 @@ const types = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.ly': 'text/plain; charset=utf-8',
-  '.bin': 'application/octet-stream',
 }
 
 createServer((req, res) => {

@@ -131,7 +131,8 @@ LILYPOND_WASM=../lilypond-wasm node tools/lilypond/check.mjs out/*.ly
 copy. `npm run site:build` builds it into `dist-site/` with esbuild: the page is a fragment
 which the host wraps in a document, the recognition runs in a Web Worker, onnxruntime-web's CPU
 build is loaded by URL, and the models are split into parts of 14 MB (`models/manifest.json`)
-for hosts with a file size limit; the worker joins them and keeps them in the Cache API.
+for hosts with a file size limit, named `.wasm` so that hosts which serve only web file types
+serve them; the worker joins them and keeps them in the Cache API.
 `npm run site:serve` serves the build locally like such a host (`--isolated` adds the
 cross-origin isolation headers, with which onnxruntime-web uses several threads). In Chromium
 the page reads both test images and gives exactly `test/fixtures/piano.expected.ly`: a full

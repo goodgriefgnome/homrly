@@ -56,7 +56,9 @@ for (const [name, model] of Object.entries(MODELS)) {
   const bytes = readFileSync(source)
   const parts = []
   for (let offset = 0, i = 0; offset < bytes.length; offset += partSize, i++) {
-    const part = `${name}-${i}.bin`
+    // Served as application/wasm, the binary type every static host knows; it is a part of an
+    // ONNX model, not WebAssembly
+    const part = `${name}-${i}.wasm`
     writeFileSync(at(`models/${part}`), bytes.subarray(offset, offset + partSize))
     parts.push(part)
   }
