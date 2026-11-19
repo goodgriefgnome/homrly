@@ -32,7 +32,8 @@ jobs:
           key: models-${{ hashFiles('src/model-files.ts') }}
       - run: npm run fetch-models
       - run: npm run typecheck
-      - run: npm test
+      # One test file at a time: the model-heavy files in parallel starve vitest's workers
+      - run: npm run test:ci
       - run: npm run site:build
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -21,7 +21,8 @@
     "test": "vitest run",
     "fetch-models": "node scripts/fetch-models.mjs",
     "site:build": "node scripts/build-site.mjs",
-    "site:serve": "node scripts/serve-site.mjs"
+    "site:serve": "node scripts/serve-site.mjs",
+    "test:ci": "vitest run --no-file-parallelism"
   },
   "dependencies": {
     "onnxruntime-web": "^1.23.0"
