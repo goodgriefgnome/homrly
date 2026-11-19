@@ -5,6 +5,8 @@ Writes homr's reference outputs for test images, which the tests compare the por
   <name>.preprocessed.png  the image segnet sees (autocrop, resize to 1920 wide, CLAHE)
   <name>.segmentation.png  with --segmentation: the class of every pixel (0-5, see
                            SegmentationClass)
+  <name>.staff.png         with --segmentation: the staff mask after noise filtering and
+                           make_lines_stronger
 
 Run it with homr's checkout and its models on the path, see DEVELOPMENT.md:
 
@@ -50,6 +52,17 @@ def main(image_path: str, segmentation: bool) -> None:
             stems_rests * 1 + notehead * 2 + clefs_keys * 3 + staff * 4 + symbols * 5
         ).astype(np.uint8)
         cv2.imwrite(stem + ".segmentation.png", classes)
+
+        from homr.debug import Debug  # noqa: PLC0415
+        from homr.model import InputPredictions  # noqa: PLC0415
+        from homr.noise_filtering import filter_predictions  # noqa: PLC0415
+        from homr.staff_detection import make_lines_stronger  # noqa: PLC0415
+
+        predictions = InputPredictions(
+            resized, preprocessed, notehead, symbols, staff, clefs_keys, stems_rests
+        )
+        predictions = filter_predictions(predictions, Debug(resized, image_path, False))
+        cv2.imwrite(stem + ".staff.png", make_lines_stronger(predictions.staff, (1, 2)))
 
 
 if __name__ == "__main__":

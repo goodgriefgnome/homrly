@@ -30,6 +30,7 @@ python -m venv .venv
 .venv/bin/pip install -r tools/reference/requirements.txt
 HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py test/fixtures/photo.png
 HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_reference.py --segmentation test/fixtures/piano.png
+HOMR_DIR=../homr .venv/bin/python -I tools/reference/dump_units.py
 ```
 
 homr's `main` module imports `rapidocr` for title detection, which homrly does not port.
@@ -56,7 +57,8 @@ numpy's medians and float32 rounding. The aim is identical results, not approxim
 | Model loading | `onnx_providers.py`, configs | `src/models.ts` | all models load |
 | Preprocessing (autocrop, resize, CLAHE) | `autocrop.py`, `resize.py`, `color_adjust.py` | `src/preprocess.ts`, `src/autocrop.ts`, `src/pil-resize.ts` | exact on `piano` and `photo` |
 | Segmentation | `segmentation/inference_segnet.py` | `src/segmentation.ts` | exact on `piano` |
-| Noise filtering, staff and symbol detection | `noise_filtering.py`, `staff_detection.py`, `bounding_boxes.py`, ... | not yet | |
+| Noise filtering, stronger staff lines | `noise_filtering.py`, `make_lines_stronger` | `src/noise-filtering.ts`, `src/predictions.ts` | exact on `piano` and a synthetic noisy mask |
+| Symbol and staff detection | `bounding_boxes.py`, `staff_detection.py`, ... | not yet | |
 | Staff dewarping and crops | `staff_dewarping.py`, `staff_parsing.py` | not yet | |
 | Transformer (encoder, decoder) | `transformer/` | not yet | |
 | Staff relations | `staff_relations.py` | not yet | |
