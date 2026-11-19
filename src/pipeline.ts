@@ -1,10 +1,13 @@
 // The stages of homr/main.py, from the segmentation onwards.
 import type { RotatedBoundingBox } from './bounding-boxes.js'
-import type { Note, Staff } from './model.js'
+import type { MultiStaff, Note, Staff } from './model.js'
+import type { Models } from './models.js'
 import { median } from './np.js'
 import { addNotesToStaffs } from './note-detection.js'
 import type { InputPredictions } from './predictions.js'
+import { groupStaffsWithModels } from './staff-relations.js'
 import { breakWideFragments, detectStaff, estimateUnitSizeFromClefs } from './staff-detection.js'
+import { repairSystems } from './system-repair.js'
 import { combineNoteheadsWithStems, detectBarLines, predictSymbols, type NoteheadWithStem } from './symbols.js'
 
 export interface SingleStaffs {
@@ -38,4 +41,14 @@ export function detectSingleStaffs(predictions: InputPredictions): SingleStaffs 
   if (staffs.length === 0) throw new Error('No staffs found')
   const notes = addNotesToStaffs(staffs, noteheadsWithStems, predictions.notehead)
   return { predictions, staffs, notes, noteheadsWithStems, barLines }
+}
+
+/**
+ * Port of main.detect_staffs_in_image and the start of main.process_image: the staffs of
+ * the page grouped into systems (grand staffs, staffs of one system).
+ */
+export async function detectSystems(models: Models, predictions: InputPredictions): Promise<MultiStaff[]> {
+  const single = detectSingleStaffs(predictions)
+  const systems = await groupStaffsWithModels(models, predictions, single.staffs)
+  return repairSystems(systems)
 }

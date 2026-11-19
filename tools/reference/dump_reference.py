@@ -10,6 +10,7 @@ and with --full, which also runs segnet and the following stages:
   <name>.staff.png         the staff mask after noise filtering and make_lines_stronger
   <name>.symbols.json      the symbols found on the page, see test/symbols.test.ts
   <name>.staffs.json       the staffs and the notes on them, see test/staffs.test.ts
+  <name>.systems.json      the staff relations and the systems, see test/systems.test.ts
 
 Run it with homr's checkout and its models on the path, see DEVELOPMENT.md:
 
@@ -144,6 +145,42 @@ def full(image_path: str, stem: str, resized: np.ndarray, preprocessed: np.ndarr
     )
     add_notes_to_staffs(staffs, noteheads_with_stems, predictions.symbols, predictions.notehead)
     write_json(stem + ".staffs.json", [staff_json(s) for s in staffs])
+
+    # As main.group_staffs and the start of process_image
+    from homr import staff_relations  # noqa: PLC0415
+    from homr.system_repair import repair_systems  # noqa: PLC0415
+
+    h_pairs = staff_relations.horizontal_pairs(staffs)
+    joined = staff_relations.join_pieces_with_model(predictions, staffs)
+    v_pairs, crops = staff_relations.page_inputs(predictions, joined)
+    probabilities = staff_relations.get_model().predict(crops)
+    systems = staff_relations.group_staffs(joined, v_pairs, probabilities)
+    repaired = repair_systems(debug, systems)
+    write_json(
+        stem + ".systems.json",
+        {
+            "horizontal_pairs": [list(p) for p in h_pairs],
+            "joined": [staff_json(s) for s in joined],
+            "vertical_pairs": [list(p) for p in v_pairs],
+            "probabilities": probabilities.tolist(),
+            "systems": [system_json(m) for m in systems],
+            "repaired": [system_json(m) for m in repaired],
+        },
+    )
+
+
+def system_json(multi_staff) -> dict:  # noqa: ANN001
+    return {
+        "certain": multi_staff.certain,
+        "staffs": [
+            {
+                "is_grandstaff": s.is_grandstaff,
+                "grid": [[float(p.x), [float(y) for y in p.y], float(p.angle)] for p in s.grid],
+                "notes": len(s.get_notes()),
+            }
+            for s in multi_staff.staffs
+        ],
+    }
 
 
 def staff_json(staff) -> dict:  # noqa: ANN001

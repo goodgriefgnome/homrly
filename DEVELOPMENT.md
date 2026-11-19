@@ -57,6 +57,8 @@ about 0.4% of such pairs. `pointPolygonTest` on integer contours is ported (it i
 `src/np.ts` reproduces numpy's pairwise summation, so means and standard deviations match
 to the last bit. One known gap: homr's `find_peaks` orders peaks with `np.argsort`, whose
 order for equal values is not specified for longer arrays; the port uses a stable order.
+Extrapolating a staff beyond its end fits a line in closed form where homr uses
+`np.polyfit`, which can differ in the last bits.
 
 ## Port status
 
@@ -64,12 +66,12 @@ order for equal values is not specified for longer arrays; the port uses a stabl
 |---|---|---|---|
 | Model loading | `onnx_providers.py`, configs | `src/models.ts` | all models load |
 | Preprocessing (autocrop, resize, CLAHE) | `autocrop.py`, `resize.py`, `color_adjust.py` | `src/preprocess.ts`, `src/autocrop.ts`, `src/pil-resize.ts` | exact on `piano` and `photo` |
-| Segmentation | `segmentation/inference_segnet.py` | `src/segmentation.ts` | exact on `piano` |
+| Segmentation | `segmentation/inference_segnet.py` | `src/segmentation.ts` | exact on `piano` and `photo` |
 | Noise filtering, stronger staff lines | `noise_filtering.py`, `make_lines_stronger` | `src/noise-filtering.ts`, `src/predictions.ts` | exact on `piano` and a synthetic noisy mask |
-| Symbols: boxes, noteheads with stems, bar lines | `bounding_boxes.py`, `bar_line_detection.py`, `note_detection.py`, `main.predict_symbols` | `src/bounding-boxes.ts`, `src/geometry.ts`, `src/symbols.ts` | exact on `piano`; polygon overlap on 3000 random pairs |
+| Symbols: boxes, noteheads with stems, bar lines | `bounding_boxes.py`, `bar_line_detection.py`, `note_detection.py`, `main.predict_symbols` | `src/bounding-boxes.ts`, `src/geometry.ts`, `src/symbols.ts` | exact on `piano` and `photo`; polygon overlap on 3000 random pairs |
 | Staff detection, notes on staffs | `staff_detection.py`, `find_peaks.py`, `model.py`, `note_detection.py`, `main.detect_single_staffs` | `src/staff-detection.ts`, `src/find-peaks.ts`, `src/model.ts`, `src/note-detection.ts`, `src/pipeline.ts` | exact on `piano` and `photo` |
+| Staff relations, system repair | `staff_relations.py`, `system_repair.py`, `main.group_staffs` | `src/staff-relations.ts`, `src/system-repair.ts` | exact on `piano` and `photo` (model outputs to 1e-4); staffs cut in pieces; 300 random pages for the repair |
 | Staff dewarping and crops | `staff_dewarping.py`, `staff_parsing.py` | not yet | |
 | Transformer (encoder, decoder) | `transformer/` | not yet | |
-| Staff relations | `staff_relations.py` | not yet | |
 | MusicXML output | `music_xml_generator.py` | not yet | |
 | LilyPond output | none (new) | not yet | |
