@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>homrly</title>
+    <style>
+      :root {
+        --bg: #f7f6f2;
+        --panel: #ffffff;
+        --text: #1d1d1b;
+        --muted: #6b6a64;
+        --line: #dedcd3;
+        --accent: #2f5d50;
+        --accent-text: #ffffff;
+        --error: #a1281d;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #191a19;
+          --panel: #232523;
+          --text: #ecebe6;
+          --muted: #a3a29b;
+          --line: #3a3c39;
+          --accent: #7fb7a4;
+          --accent-text: #10201b;
+          --error: #f08a7e;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+      h1 { font-size: 28px; margin: 0; letter-spacing: -0.01em; }
+      .lead { color: var(--muted); margin: 4px 0 24px; }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      h2 { font-size: 15px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+      #drop {
+        display: block;
+        border: 2px dashed var(--line);
+        border-radius: 8px;
+        padding: 28px 16px;
+        text-align: center;
+        cursor: pointer;
+        color: var(--muted);
+      }
+      #drop.over { border-color: var(--accent); color: var(--text); }
+      #drop strong { color: var(--text); }
+      #preview { display: block; max-width: 100%; max-height: 420px; margin: 16px auto 0; border-radius: 4px; }
+      button {
+        font: inherit;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 8px 14px;
+        cursor: pointer;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+      ol#stages { list-style: none; margin: 0; padding: 0; }
+      ol#stages li { padding: 4px 0 4px 26px; position: relative; color: var(--muted); }
+      ol#stages li::before { content: '○'; position: absolute; left: 4px; }
+      ol#stages li.active { color: var(--text); font-weight: 600; }
+      ol#stages li.active::before { content: '●'; color: var(--accent); }
+      ol#stages li.done::before { content: '✓'; color: var(--accent); }
+      progress { width: 100%; height: 8px; margin-top: 8px; accent-color: var(--accent); }
+      #staff { display: block; max-width: 100%; margin-top: 12px; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
+      .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+      .tabs button[aria-selected='true'] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+      pre#output {
+        margin: 0;
+        max-height: 480px;
+        overflow: auto;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 12px;
+        font: 13px/1.45 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+        white-space: pre;
+      }
+      .muted { color: var(--muted); font-size: 14px; }
+      .error { color: var(--error); }
+      [hidden] { display: none !important; }
+      footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
+      footer a { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>homrly</h1>
+      <p class="lead">Turns a picture of sheet music into LilyPond and MusicXML, in your browser. Nothing is uploaded.</p>
+
+      <section>
+        <h2>Image</h2>
+        <label id="drop">
+          <input id="file" type="file" accept="image/*" hidden />
+          <strong>Choose an image</strong> or drop it here: a scan, a screenshot or a photo of one page.
+        </label>
+        <img id="preview" alt="The chosen image" hidden />
+        <div class="row">
+          <button id="run" class="primary" disabled>Read the music</button>
+          <span id="note" class="muted">The first run downloads the models, about 160 MB. They are kept for later runs.</span>
+        </div>
+      </section>
+
+      <section id="progress-section" hidden>
+        <h2>Progress</h2>
+        <ol id="stages">
+          <li data-stage="loading">Loading the models</li>
+          <li data-stage="preprocessing">Preparing the image</li>
+          <li data-stage="segmentation">Finding staff lines, notes and symbols</li>
+          <li data-stage="staffs">Finding the staffs and systems</li>
+          <li data-stage="transcription">Reading the staffs</li>
+          <li data-stage="writing">Writing the score</li>
+        </ol>
+        <progress id="bar" hidden></progress>
+        <div id="detail" class="muted"></div>
+        <canvas id="staff" hidden></canvas>
+        <p id="error" class="error" hidden></p>
+      </section>
+
+      <section id="result-section" hidden>
+        <h2>Result</h2>
+        <div class="tabs" role="tablist">
+          <button role="tab" aria-selected="true" data-tab="lilypond">LilyPond</button>
+          <button role="tab" aria-selected="false" data-tab="musicxml">MusicXML</button>
+        </div>
+        <pre id="output"></pre>
+        <div class="row">
+          <button id="copy">Copy</button>
+          <button id="download">Download</button>
+          <span id="time" class="muted"></span>
+        </div>
+      </section>
+
+      <footer>
+        homrly runs <a href="https://github.com/liebharc/homr">homr</a>'s models and pipeline in the
+        browser. AGPL-3.0.
+      </footer>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

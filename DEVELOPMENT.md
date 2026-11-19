@@ -112,3 +112,17 @@ How it was checked, with [lilypond-wasm](https://github.com/goodgriefgnome/lilyp
 ```sh
 LILYPOND_WASM=../lilypond-wasm node tools/lilypond/check.mjs out/*.ly
 ```
+
+## Demo
+
+`demo/` is a Vite page which runs `recognize()` in a Web Worker. In development the Vite
+server serves `models/` and onnxruntime-web's loader and WebAssembly (the CPU build), which
+onnxruntime-web loads by URL so that it can start its threads; both need the cross-origin
+isolation headers. `tools/browser-check.cjs` runs the page in Chromium with Playwright and
+compares its LilyPond with an expected file; on the test images the page gives exactly
+`test/fixtures/piano.expected.ly`, in about 20 seconds on four threads.
+
+```sh
+npm run demo &
+node tools/browser-check.cjs http://localhost:5173/ test/fixtures/photo.png test/fixtures/piano.expected.ly
+```

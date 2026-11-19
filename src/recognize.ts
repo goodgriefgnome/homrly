@@ -4,7 +4,7 @@ import { rgbaToBgr, type BgrImage, type GrayImage, type RgbaPixels } from './ima
 import { musicXmlToLilyPond, type LilyPondOptions } from './lilypond.js'
 import { generateXml, type XmlGeneratorArguments } from './music-xml.js'
 import type { MultiStaff } from './model.js'
-import { Models, type ModelSource } from './models.js'
+import { MODELS, Models, type ModelName, type ModelSource } from './models.js'
 import { detectSystems } from './pipeline.js'
 import { finishPredictions, predictionsFromClasses } from './predictions.js'
 import { preprocess } from './preprocess.js'
@@ -56,6 +56,8 @@ export async function recognize(image: RgbaPixels | BgrImage, options: Recognize
   const models = options.models instanceof Models ? options.models : new Models(options.models)
   report({ stage: 'loading' })
   const cv = await loadCv()
+  // All models up front, one after the other, so that downloads and errors come first
+  for (const name of Object.keys(MODELS) as ModelName[]) await models.session(name)
   const segnet = await models.session('segnet')
 
   report({ stage: 'preprocessing' })
